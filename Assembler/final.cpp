@@ -111,6 +111,8 @@ public:
             iFormat(line,com);
         }else if(com[0]=='s' && com.length()==2){
             // S-format
+            cout<<"sFormat"<<endl;
+            sFormat(line,com);
         }else if(com[0]=='b'){
             // B-format
         }else if(com[0]=='j'){
@@ -124,6 +126,46 @@ public:
         }
     }
 
+
+    // S-format
+    void sFormat(string line, string com){
+        // Commands included: sd, sw, sh, sb
+        string func3, opCode = "0100011", rs1, rs2, immN;
+        string RS1, RS2, imm, res;
+        ll ind;
+        // sd rs2, imm(rs1)
+        ind = line.find(',');
+        rs2 = line.substr(0,ind);
+        line = line.substr(ind+1);
+        
+        ltrim(line);
+        ind = line.find('(');
+        immN = line.substr(0,ind);
+        line = line.substr(ind+1);
+        
+        rs1 = line.substr(0,line.size()-1);
+
+        if(com=="sb"){
+            func3 = "000";
+        }else if(com=="sh"){
+            func3 = "001";
+        }else if(com=="sw"){
+            func3 = "010";
+        }else if(com=="sd"){
+            func3 = "011";
+        }
+        RS1 = reg_alias[rs1];
+        RS2 = reg_alias[rs2];
+        imm = signedIntToBin(stoi(immN),12);
+
+        cout<<com<<" "<<rs2<<" "<<immN<<" "<<rs1<<endl;
+        // cout<<imm<<endl;
+
+        res = binToHex(imm.substr(0,7)+RS2+RS1+func3+imm.substr(7)+opCode);
+        cout<<res<<endl;
+    }
+
+    // I-format
     void iFormat(string line, string com){
         string rd, func3, rs1, imm, immN, opCode, func6, hex;
         string RD, RS1;
