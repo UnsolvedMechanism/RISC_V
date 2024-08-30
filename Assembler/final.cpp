@@ -121,6 +121,7 @@ public:
             // B-format
         }else if(com[0]=='j'){
             // J-format
+            jFormat(line,com);
         }else if(com=="lui"||com=="auipc"){
             // U-format
         }else{
@@ -128,6 +129,27 @@ public:
             cout<<"rFormat"<<endl;
             rFormat(line,com);
         }
+    }
+
+    // J-format
+    void jFormat(string line, string com){
+        if(com!="jal")  exitFunc(1);
+        string func3, rd, RD, immN, imm, hex, opCode = "1101111";
+
+        ll ind = line.find(',');
+        rd = line.substr(0,ind);
+        trim(rd);
+        if(line.size()<=ind) exitFunc(4);
+        immN = line.substr(ind+1);
+        trim(immN);
+        if(immN=="") exitFunc(4);
+
+        imm = signedIntToBin(stoi(immN),21);
+        if(reg_alias.find(rd)==reg_alias.end()) exitFunc(2);
+        RD = reg_alias[rd];
+
+        hex = binToHex(imm[0]+imm.substr(10,10)+imm[9]+imm.substr(1,8)+RD+opCode);
+        cout<<hex<<endl;
     }
 
     // S-format
@@ -377,7 +399,7 @@ public:
             err += "command not found";
             break;
         case 2:
-            err += "register missing";
+            err += "register not found";
             break;
         case 3:
             err += "immediate value exceeds limit";
