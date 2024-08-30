@@ -6,6 +6,7 @@ class RiscVCompiler{
 public:
     vector<string> output;
     
+    ll currLine = 0;
     vector<string> reg;
     map<string,string> reg_alias;
     map<string,ll> labels;
@@ -89,10 +90,10 @@ public:
         // check_LabelsText(text);
 
         //compiling each line
-        for(ll i = 0 ; i < text.size() ; i++){
-            trim(text[i]);
+        for(currLine = 0 ; currLine < text.size() ; currLine++){
+            trim(text[currLine]);
             // cout<<text[i]<<endl;
-            line_break(text[i]);
+            line_break(text[currLine]);
             cout<<endl;
         }
     }
@@ -125,7 +126,6 @@ public:
             rFormat(line,com);
         }
     }
-
 
     // S-format
     void sFormat(string line, string com){
@@ -268,25 +268,32 @@ public:
     // R-format
     void rFormat(string line, string com){
         string opCode = "0110011";
-        string func3, func7;
-        // cout<<line<<endl;
+        string func3, func7, RS1, RS2, RD;
+        
+        
         ll ind = line.find(',');
         string rd = line.substr(0,ind);
         
+        if(line.size()<=ind) exitFunc(2);
         line = line.substr(ind+1);
         ltrim(line);
         ind = line.find(',');
         string rs1 = line.substr(0,ind);
 
+        if(line.size()<=ind) exitFunc(2);
         line = line.substr(ind+1);
         trim(line);
         string rs2 = line;
 
         cout<<com<<" "<<rd<<" "<<rs1<<" "<<rs2<<endl;
 
-        string RS1 = reg_alias[rs1];
-        string RS2 = reg_alias[rs2];
-        string RD = reg_alias[rd];
+        if(reg_alias.find(rs1)==reg_alias.end() || reg_alias.find(rs2)==reg_alias.end() || reg_alias.find(rd)==reg_alias.end()){
+            exitFunc(2);
+        }
+
+        RS1 = reg_alias[rs1];
+        RS2 = reg_alias[rs2];
+        RD = reg_alias[rd];
 
         cout<<RD<<" "<<RS1<<" "<<RS2<<endl;
         if(com=="add"){
@@ -313,9 +320,29 @@ public:
         }else if(com=="sra"){
             func3 = "101";
             func7 = "0100000";
+        }else{
+            exitFunc(1);
         }
         string hex = binToHex(func7+RS2+RS1+func3+RD+opCode);
         cout<<hex<<endl;
+    }
+
+    void exitFunc(int n){
+        string err = ": ";
+        
+        switch (n){
+        case 1:
+            err += "command not found";
+            break;
+        case 2:
+            err += "register missing";
+            break;
+        case 3:
+            err += "immediate value exceeds limit";
+            break;
+        }
+        cout<<"Error in line "<<(currLine+1)<<err;
+        exit(0);
     }
 
     // For final step
@@ -334,6 +361,10 @@ public:
     
     string signedIntToBin(ll n, ll b){
         string res = "";
+        ll lim = (1<<(b-1));
+        if(lim<=n || -lim>n){
+            exitFunc(3);
+        }
         bool bFlag = 0;
         ll temp = (1<<(b-1));
 
