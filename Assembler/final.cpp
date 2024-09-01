@@ -631,7 +631,7 @@ public:
 };
 
 int main(){
-    ifstream inputFile("input.txt");
+    ifstream inputFile("input.s");
     vector<string> text;
     string line;
     while(getline(inputFile,line)){
