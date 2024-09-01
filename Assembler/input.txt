@@ -1,4 +1,1 @@
-L1:add x0, x1, x2
-beq x3, x4, L1
-beq x1, x25, 432
-lui x1, 74565
+lui x9, 0x100000000
