@@ -155,10 +155,10 @@ public:
             ll j = labels[imm];
             num = 4*(j-currLine);
         }else{
+            if(!checkImm(imm)) exitFunc(5);
             num = stoi(imm);
         }
         immN = signedIntToBin(num,13);
-    
         if(com=="beq") func3 = "000";
         else if(com=="bne") func3 = "001";
         else if(com=="blt") func3 = "100";
