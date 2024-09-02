@@ -77,62 +77,53 @@ public:
         reset();
         
         //checking for labels
-        for(ll i = 0 ; i < text.size() ; i++){
-            ll ind = text[i].find(":");
-            // cout<<text[i]<<endl;
+        for(currLine = 0 ; currLine < text.size() ; currLine++){
+            ll ind = text[currLine].find(":");
+            
             //removing label from the line for simplicity
             if(ind != -1){
-                string lab = text[i].substr(0,ind);
-                // cout<<lab<<endl;
-                labels[lab] = i;
-                text[i] = text[i].substr(ind+1);
-                ltrim(text[i]);
+                string lab = text[currLine].substr(0,ind);
+                if(labels.find(lab)!=labels.end()) exitFunc(6);
+                labels[lab] = currLine;
+                text[currLine] = text[currLine].substr(ind+1);
+                ltrim(text[currLine]);
             }
         }
-        // check_LabelsText(text);
 
         //compiling each line
         for(currLine = 0 ; currLine < text.size() ; currLine++){
             trim(text[currLine]);
-            // cout<<text[i]<<endl;
             line_break(text[currLine]);
-            // cout<<endl;
         }
     }
 
     void line_break(string line){
+        // Finding the command
         ll ind = line.find(' ');
         string com = line.substr(0,ind);
         line = line.substr(ind+1);
         ltrim(line);
-        // cout<<com<<endl;
-        // cout<<line<<endl;
         
         char l = com[com.size()-1];
         if((l>='0'&&l<='9')||(l==',')) exitFunc(1);
 
         if(com=="lui"||com=="auipc"){
             // U-format
-            // cout<<"uFormat"<<endl;
             uFormat(line,com);
         }else if(com[0]=='l'||l=='i'||com=="jalr"){
             // I-format
-            // cout<<"iFormat"<<endl;
             iFormat(line,com);
         }else if(com[0]=='s' && com.length()==2){
             // S-format
-            // cout<<"sFormat"<<endl;
             sFormat(line,com);
         }else if(com[0]=='b'){
             // B-format
             bFormat(line,com);
         }else if(com[0]=='j'){
             // J-format
-            // cout<<"jFormat"<<endl;
             jFormat(line,com);
         }else{
             // R-format
-            // cout<<"rFormat"<<endl;
             rFormat(line,com);
         }
     }
@@ -160,8 +151,6 @@ public:
         RS1 = reg_alias[rs1];
         RS2 = reg_alias[rs2];
         
-        // cout<<com<<rs1<<rs2<<imm<<endl;
-
         if(labels.find(imm)!=labels.end()){
             ll j = labels[imm];
             num = 4*(j-currLine);
@@ -169,8 +158,7 @@ public:
             num = stoi(imm);
         }
         immN = signedIntToBin(num,13);
-        // cout<<com<<" "<<rs1<<" "<<rs2<<" "<<immN<<endl; 
-
+    
         if(com=="beq") func3 = "000";
         else if(com=="bne") func3 = "001";
         else if(com=="blt") func3 = "100";
@@ -180,7 +168,6 @@ public:
         else exitFunc(1);
 
         string hex = binToHex(immN[0]+immN.substr(2,6)+RS2+RS1+func3+immN.substr(8,4)+immN[1]+opCode,8);
-        // cout<<hex<<endl;
         output.push_back(hex);
     }
 
@@ -199,10 +186,8 @@ public:
         if(reg_alias.find(rd)==reg_alias.end()) exitFunc(2);
         RD = reg_alias[rd];
 
-        // cout<<immN<<endl;
         if(immN[0]=='-') exitFunc(3);
         if(immN.size()>2 && immN.substr(0,2)=="0x"){
-            // cout<<1<<endl;
             if(immN.size()>10||immN.size()<3) exitFunc(3); 
             imm = immN.substr(2);
             for(int i = 0 ; i < imm.size() ; i++){
@@ -210,34 +195,26 @@ public:
             }
             while(imm.size()>5) imm = imm.substr(1);
             while(imm.size()<5) imm = "0"+imm;
-            // cout<<imm<<endl;
             hex = binToHex(RD+opCode,3);
             hex = imm+hex;
         }else{
 
             if(!checkImm(immN)) exitFunc(5);
-            // ll temp = (stoi(immN)>>12);
 
-            // cout<<immN<<endl;
-            string temp = to_string(2*(INT_MAX+1ll)-1ll);
-            
             ll t1 = 2*(INT_MAX+1ll)-1ll;
-
             ll num = 0;
             for(int i = 0 ; i < immN.size() ; i++){
                 num*=10;
                 num += (immN[i]-'0');
             }
-            // cout<<num<<endl; cout<<t1<<endl;
+
             if(num>t1) exitFunc(3);
             if(num>INT_MAX){
                 num = num-INT_MAX-1;
             }
-            // cout<<temp<<endl;
-            // cout<<immN<<endl;
+
             imm = signedIntToBin(num,32);
             hex = binToHex(imm.substr(12,20)+RD+opCode,8);
-            // cout<<hex<<endl;
         }
         output.push_back(hex);
     }
@@ -267,7 +244,6 @@ public:
         RD = reg_alias[rd];
 
         hex = binToHex(imm[0]+imm.substr(10,10)+imm[9]+imm.substr(1,8)+RD+opCode,8);
-        // cout<<hex<<endl;
         output.push_back(hex);
     }
 
@@ -277,7 +253,7 @@ public:
         string func3, opCode = "0100011", rs1, rs2, immN;
         string RS1, RS2, imm, hex;
         ll ind;
-        // sd rs2, imm(rs1)
+        
         ind = line.find(',');
         rs2 = line.substr(0,ind);
         if(line.size()<=ind) exitFunc(2);
@@ -294,24 +270,18 @@ public:
 
         if(!checkImm(immN)) exitFunc(5);
 
-        if(com=="sb"){
-            func3 = "000";
-        }else if(com=="sh"){
-            func3 = "001";
-        }else if(com=="sw"){
-            func3 = "010";
-        }else if(com=="sd"){
-            func3 = "011";
-        }
+        if(com=="sb") func3 = "000";
+        else if(com=="sh") func3 = "001";
+        else if(com=="sw") func3 = "010";
+        else if(com=="sd") func3 = "011";
+
         if(reg_alias.find(rs1)==reg_alias.end() || reg_alias.find(rs2)==reg_alias.end()) exitFunc(2);
         RS1 = reg_alias[rs1];
         RS2 = reg_alias[rs2];
         imm = signedIntToBin(stoi(immN),12);
 
-        // cout<<com<<" "<<rs2<<" "<<immN<<" "<<rs1<<endl;
-
+        
         hex = binToHex(imm.substr(0,7)+RS2+RS1+func3+imm.substr(7)+opCode,8);
-        // cout<<hex<<endl;
         output.push_back(hex);
     }
 
@@ -346,7 +316,6 @@ public:
             RD = reg_alias[rd];
             RS1 = reg_alias[rs1];
 
-            // cout<<com<<" "<<rd<<" "<<rs1<<" "<<immN<<endl;
             hex = binToHex(imm+RS1+func3+RD+opCode,8);
         }else if(com[0]=='l'){
             opCode = "0000011";
@@ -373,37 +342,23 @@ public:
 
             if(com[com.size()-1]=='u'){
                 imm = signedIntToBin(stoi(immN),13).substr(1);
-                    if(com=="lbu"){
-                        func3 = "100";
-                    }else if(com=="lhu"){
-                        func3 = "101";
-                    }else if(com=="lwu"){
-                        func3 = "110";
-                    }else{
-                        exitFunc(1);
-                    }
+                    if(com=="lbu") func3 = "100";
+                    else if(com=="lhu") func3 = "101";
+                    else if(com=="lwu") func3 = "110";
+                    else exitFunc(1);
             }else{
                 imm = signedIntToBin(stoi(immN),12);
-                if(com=="lb"){
-                    func3 = "000";
-                }else if(com=="lh"){
-                    func3 = "001";
-                }else if(com=="lw"){
-                    func3 = "010";
-                }else if(com=="ld"){
-                    func3 = "011";
-                }else{
-                    exitFunc(1);
-                }
-
+                if(com=="lb") func3 = "000";
+                else if(com=="lh") func3 = "001";
+                else if(com=="lw") func3 = "010";
+                else if(com=="ld") func3 = "011";
+                else exitFunc(1);
             }
-
-            // cout<<com<<" "<<rd<<" "<<rs1<<" "<<immN<<endl;
-            // cout<<RD<<" "<<RS1<<" "<<imm<<endl;
 
             hex = binToHex(imm+RS1+func3+RD+opCode,8);
         }else{
             
+            opCode = "0010011";
             ind = line.find(',');
             rs1 = line.substr(0,ind);
             
@@ -411,15 +366,10 @@ public:
             immN = line.substr(ind+1);
             trim(immN);
 
-
-            // cout<<com<<" "<<rd<<" "<<rs1<<" "<<immN<<endl;
-            
-            opCode = "0010011";
             if(reg_alias.find(rd)==reg_alias.end() || reg_alias.find(rs1)==reg_alias.end()) exitFunc(2);
             if(!checkImm(immN)) exitFunc(5);
             RD = reg_alias[rd];
             RS1 = reg_alias[rs1];
-            // immN = intToBinStr(stoi(immN));
 
             if(com[0]=='s'){
                 if(com=="slli"){
@@ -437,22 +387,15 @@ public:
                 imm = signedIntToBin(stoi(immN),6);
                 imm = func6+imm;
             }else{
-                if(com=="addi"){
-                    func3 = "000";
-                }else if(com=="xori"){
-                    func3 = "100";
-                }else if(com=="ori"){
-                    func3 = "110";
-                }else if(com=="andi"){
-                    func3 = "111";
-                }else{
-                    exitFunc(1);
-                }
+                if(com=="addi") func3 = "000";
+                else if(com=="xori") func3 = "100";
+                else if(com=="ori") func3 = "110";
+                else if(com=="andi") func3 = "111";
+                else exitFunc(1);
                 imm = signedIntToBin(stoi(immN),12);
             }
             hex = binToHex(imm+RS1+func3+RD+opCode,8);
         }
-        // cout<<hex<<endl;
         output.push_back(hex);
     }
 
@@ -476,8 +419,6 @@ public:
         trim(line);
         string rs2 = line;
 
-        // cout<<com<<" "<<rd<<" "<<rs1<<" "<<rs2<<endl;
-
         if(reg_alias.find(rs1)==reg_alias.end() || reg_alias.find(rs2)==reg_alias.end() || reg_alias.find(rd)==reg_alias.end()){
             exitFunc(2);
         }
@@ -486,7 +427,6 @@ public:
         RS2 = reg_alias[rs2];
         RD = reg_alias[rd];
 
-        // cout<<RD<<" "<<RS1<<" "<<RS2<<endl;
         if(com=="add"){
             func3 = "000";
             func7 = "0000000";
@@ -515,7 +455,6 @@ public:
             exitFunc(1);
         }
         string hex = binToHex(func7+RS2+RS1+func3+RD+opCode,8);
-        // cout<<hex<<endl;
         output.push_back(hex);
     }
 
@@ -538,6 +477,9 @@ public:
             break;
         case 5:
             err += "incorrect immediate value";
+            break;
+        case 6:
+            err += "multiple labels defined";
         }
         cout<<"Error in line "<<(currLine+1)<<err;
         exit(0);
@@ -545,15 +487,11 @@ public:
 
     // For final step
     string binToHex(string str, ll n){
-        // cout<<str<<endl;
-        // return str;
         string temp, res = "";
         for(int i = 0 ; i < n ; i++){
             temp = str.substr(4*i,4);
             res = res + hexChar[temp];
-            // cout<<temp<<" ";
         }
-        // cout<<endl;
         return res;
     }
     
@@ -561,7 +499,6 @@ public:
         string res = ""; 
         
         ll lim = ((ll)1<<(b-1));
-        // cout<<lim<<endl;
         
         if(lim<=n || -lim>n){
             exitFunc(3);
@@ -641,21 +578,10 @@ int main(){
 
     RiscVCompiler obj;
     
-    // for(int i = -5 ; i <= 5 ; i++){
-    //     cout<<obj.signedIntToBin(i,12)<<endl;
-    // }
-
-    // vector<string> t1 = {"add x3, x4, x7"};
-    // obj.compile(t1);
-    // beq x4, x7, L1";
     obj.compile(text);
     for(auto it:obj.output){
         cout<<it<<endl;
     }
 
-    // cout<<"Labels:"<<endl; for(auto it:obj.labels) cout<<it.first<<" "<<it.second<<endl;
-    
-    // // obj.printAlias();
-    // cout<<obj.reg[0]<<endl;
     return 0;
 }
