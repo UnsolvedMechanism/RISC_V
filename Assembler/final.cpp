@@ -2,11 +2,11 @@
 using namespace std;
 #define ll long long
 
-class RiscVCompiler{
+class RiscVAssembler{
 public:
     vector<string> output;
 
-    ll currLine = 0;
+    ll currLine;
     vector<string> reg;
     map<string,string> reg_alias;
     map<string,ll> labels;
@@ -14,8 +14,8 @@ public:
     // map<int,string> intString;
 
     // constructor
-    RiscVCompiler(){
-        
+    RiscVAssembler(){
+        currLine = -1;
         //setting up hexChar
         for(ll i = 0 ; i < 10 ; i++){
             string temp = intToBinStr(i).substr(1);
@@ -95,8 +95,10 @@ public:
             trim(text[currLine]);
             line_break(text[currLine]);
         }
+        writeInFIle();
     }
 
+private:
     void line_break(string line){
         // Finding the command
         ll ind = line.find(' ');
@@ -341,11 +343,11 @@ public:
             if(!checkImm(immN)) exitFunc(5);
 
             if(com[com.size()-1]=='u'){
-                imm = signedIntToBin(stoi(immN),13).substr(1);
-                    if(com=="lbu") func3 = "100";
-                    else if(com=="lhu") func3 = "101";
-                    else if(com=="lwu") func3 = "110";
-                    else exitFunc(1);
+                imm = signedIntToBin(stoi(immN),12);
+                if(com=="lbu") func3 = "100";
+                else if(com=="lhu") func3 = "101";
+                else if(com=="lwu") func3 = "110";
+                else exitFunc(1);
             }else{
                 imm = signedIntToBin(stoi(immN),12);
                 if(com=="lb") func3 = "000";
@@ -461,6 +463,7 @@ public:
     // exit compilation in case invalid command is called
     void exitFunc(int n){
         string err = ": ";
+        writeInFIle();
         
         switch (n){
         case 1:
@@ -548,6 +551,19 @@ public:
         return 1;
     }
 
+    void writeInFIle(){
+        ofstream myFile("output.hex");
+        if(myFile.is_open()){
+            for(auto it:output){
+                myFile<<it<<endl;
+            }
+            cout<<"Hex codes stored in output.hex file"<<endl;
+            myFile.close();
+        }else{
+            cout<<"Error in creating an output file"<<endl;
+        }
+    }
+
     inline void ltrim(std::string &s) {
         s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
             return !std::isspace(ch);
@@ -576,12 +592,8 @@ int main(){
     }
     inputFile.close();
 
-    RiscVCompiler obj;
+    RiscVAssembler obj;
     
     obj.compile(text);
-    for(auto it:obj.output){
-        cout<<it<<endl;
-    }
-
     return 0;
 }
