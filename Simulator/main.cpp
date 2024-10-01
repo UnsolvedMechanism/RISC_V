@@ -590,11 +590,13 @@ public:
     vector<int> instructions;
     vector<long long> regs;
     vector<string> text; //stores the risc v code line by line
+    vector<bitset<8>> memBlock;
+    ll PC;
 
-    long long PC;
     Simulator(){
         PC = 0;
         regs.resize(32);
+        memBlock.resize(0x40000);
         for(int i = 0 ; i < 32 ; i++){
             regs[i] = 0;
         }
@@ -625,36 +627,159 @@ public:
         }
     }
 
+    void runSingleLine(){
+        ll opCode = (instructions[PC/4]&0x7f);
+        cout<<"Executed: "<<text[PC/4]<<"; PC = 0x"<<setfill('0')<<setw(8)<<hex<<PC<<endl;
+        // cout<<"Executed: "<<text[PC]<<"; PC = 0x"<<setfill('0')<<setw(8)<<hex<<4*PC<<endl;
+        if(opCode==0b0110011){
+            cout<<"rInst"<<endl;
+            rInst(instructions[PC/4]>>7);
+        }else if(opCode==0b0010011){
+            cout<<"iInst"<<endl;
+            iInst(instructions[PC/4]>>7);
+        }else if(opCode==0b0000011){
+            cout<<"iInst_load"<<endl;
+        }else if(opCode==0b0100011){
+            cout<<"iInst_store"<<endl;
+        }else if(opCode==0b1100011){
+            cout<<"bInst"<<endl;
+            bInst(instructions[PC/4]>>7);
+        }else if(opCode==0b1101111){
+            cout<<"jal"<<endl;
+        }else if(opCode==0b1100111){
+            cout<<"jalr"<<endl;
+            jalrInst(instructions[PC/4]>>7);
+        }else if(opCode==0b0110111){
+            cout<<"lui"<<endl;
+        }
+        PC+=4;
+    }
+
     void runFile(){
         ll opCode;
-        while(PC<instructions.size()){
-            opCode = (instructions[PC]&0x7f);
-            cout<<"Executed: "<<text[PC]<<"; PC = 0x"<<setfill('0')<<setw(8)<<hex<<4*PC<<endl;
-            if(opCode==0b0110011){
-                cout<<"rInst"<<endl;
-                rInst(instructions[PC]>>7);
-            }else if(opCode==0b0010011){
-                cout<<"iInst"<<endl;
-            }else if(opCode==0b0000011){
-                cout<<"iInst_load"<<endl;
-            }else if(opCode==0b0100011){
-                cout<<"iInst_store"<<endl;
-            }else if(opCode==0b1100011){
-                cout<<"bInst"<<endl;
-                continue;
-            }else if(opCode==0b1101111){
-                cout<<"jal"<<endl;
-            }else if(opCode==0b1100111){
-                cout<<"jalr"<<endl;
-            }else if(opCode==0b0110111){
-                cout<<"lui"<<endl;
-            }
-            PC++;
+        while(PC/4<instructions.size()){
+            runSingleLine();
         }
     }
 
-    void iInst(){
+    void jalrInst(ll inst){
+        int rd = (inst&0b11111);
+        inst = inst>>5;
+        int func3 = (inst&0b111);
+        inst = inst>>3;
+        int rs1 = (inst&0b11111);
+        inst = inst>>5;
+        int imm = inst;
 
+        if(rd!=0){
+            regs[rd] = PC+4;
+        }
+        PC = regs[rs1]+imm;
+    }
+
+    void bInst(ll inst){
+        ll imm = (inst&0b1);
+        imm = imm << 10;
+        inst = inst >> 1;
+        imm = imm|(inst&0b1111);
+        inst = inst >> 4;
+
+        int func3 = (inst&0b111);
+        inst = inst >> 3;
+
+        ll rs1 = (inst&0b11111);
+        inst = inst >> 5;
+
+        ll rs2 = (inst&0b11111);
+        inst = inst >> 5;
+
+        ll imm10_5 = (inst&0b111111);
+        inst = inst >> 6;
+
+        imm10_5 = imm10_5 << 4;
+
+        imm = imm|imm10_5;
+
+        imm = imm << 1;
+
+        int imm12 = (inst&0b1);
+        
+        if (imm12 == 0b1){
+            imm = (imm^0xfff);
+            imm += 0b1;
+            imm = 0 - imm;
+        }
+
+        switch(func3){
+            case 0x0:
+                if (regs[rs1] == regs[rs2]){
+                    PC +=imm-4;
+                }
+                break;
+            case 0x1:
+                if (regs[rs1] != regs[rs2]){
+                    PC +=imm-4;
+                }
+                break;
+            case 0x4:
+                if (regs[rs1] < regs[rs2]){
+                    PC +=imm-4;
+                }
+                break;
+            case 0x5:
+                if (regs[rs1] >= regs[rs2]){
+                    PC +=imm-4;
+                }
+                break;
+            case 0x6:
+                if (abs(regs[rs1]) < abs(regs[rs2])){
+                    PC +=imm-4;
+                }
+                break;
+            case 0x7:
+                if(abs(regs[rs1]) >= abs(regs[rs2])){
+                    PC +=imm-4;
+                }
+                break;      
+        }
+        cout<<"Branch format imm:"<<imm<<endl;
+    }
+
+    void iInst(ll inst){
+        int rd = (inst&0b11111);
+        inst = inst>>5;
+        int func3 = (inst&0b111);
+        inst = inst>>3;
+        int rs1 = (inst&0b11111);
+        inst = inst>>5;
+        int imm = inst;
+
+        if(rd==0) return;
+
+        switch(func3){
+            case 0x0:
+                regs[rd] = (regs[rs1]+inst);
+                break;
+            case 0x4:
+                regs[rd] = (regs[rs1]^inst);
+                break;
+            case 0x6:
+                regs[rd] = (regs[rs1]|inst);
+                break;
+            case 0x7:
+                regs[rd] = (regs[rs1]&inst);
+                break;
+            case 0x1:
+                regs[rd] = (regs[rs1]<<inst);
+                break;
+            case 0x5:
+                if((inst>>6)>0){
+                    regs[rd] = (regs[rs1]>>(inst&0b111111));
+                }else{
+                    regs[rd] = (regs[rs1]>>(inst&0b111111));
+                }
+                break;
+        }
     }
 
     void rInst(ll inst){
@@ -666,6 +791,8 @@ public:
         inst = inst>>5;
         int rs2 = (inst&0b11111);
         inst = inst>>5;
+
+        if(rd==0) return;
 
         switch(inst){
             case 0x00:
@@ -703,7 +830,6 @@ public:
         }
     }
 
-
     void loadFile(){
         string fileName;
         cin>>fileName;
@@ -729,7 +855,7 @@ public:
 
         while (std::getline(file, line)) {
             std::stringstream ss;
-            int value;
+            ll value;
 
             ss << std::hex << line;
             ss >> value;
@@ -744,19 +870,18 @@ public:
             cout <<std::hex<< val << endl;
         }
     }
+
     void reset(){
         PC = 0;
         for(int i = 0 ; i < regs.size() ; i++){
             regs[i] = 0;
         }
         text.clear();
+        instructions.clear();
     }
 };
 
 int main(){
-
-    
-
     Simulator obj;
     obj.simulate();
 
