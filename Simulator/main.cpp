@@ -386,7 +386,8 @@ private:
                 }else{
                     exitFunc(1);
                 }
-                imm = signedIntToBin(stoi(immN),6);
+                imm = signedIntToBin(stoi(immN),7).substr(1);
+                if(immN[0]=='-') exitFunc(3);
                 imm = func6+imm;
             }else{
                 if(com=="addi") func3 = "000";
@@ -606,6 +607,7 @@ public:
         string com;
         while(1){
             cin>>com;
+            cout<<com<<endl;
             if(com=="load"){
                 loadFile();
             }else if(com == "run"){
@@ -615,8 +617,21 @@ public:
                 exit(0);
             }else if(com=="regs"){
                 printRegs();
+            }else if(com=="step"){
+                runSingleLine();
+            }else if(com=="mem"){
+                printMem();
             }
             cout<<endl;
+        }
+    }
+
+    void printMem(){
+        ll add, count;
+        cin>>hex>>add;
+        cin>>count;
+        for(int i = 0 ; i < count ; i++){
+            cout<<"Memory["<<hex<<add+i<<"] = 0x"<<hex<<bitsetToNum(memBlock[add+i-0x10000])<<endl;
         }
     }
 
@@ -632,25 +647,29 @@ public:
         cout<<"Executed: "<<text[PC/4]<<"; PC = 0x"<<setfill('0')<<setw(8)<<hex<<PC<<endl;
         // cout<<"Executed: "<<text[PC]<<"; PC = 0x"<<setfill('0')<<setw(8)<<hex<<4*PC<<endl;
         if(opCode==0b0110011){
-            cout<<"rInst"<<endl;
+            // cout<<"rInst"<<endl;
             rInst(instructions[PC/4]>>7);
         }else if(opCode==0b0010011){
-            cout<<"iInst"<<endl;
+            // cout<<"iInst"<<endl;
             iInst(instructions[PC/4]>>7);
         }else if(opCode==0b0000011){
-            cout<<"iInst_load"<<endl;
+            // cout<<"iInst_load"<<endl;
+            loadInst(instructions[PC/4]>>7);
         }else if(opCode==0b0100011){
             cout<<"iInst_store"<<endl;
+            storeInst(instructions[PC/4]>>7);
         }else if(opCode==0b1100011){
-            cout<<"bInst"<<endl;
+            // cout<<"bInst"<<endl;
             bInst(instructions[PC/4]>>7);
         }else if(opCode==0b1101111){
-            cout<<"jal"<<endl;
+            // cout<<"jal"<<endl;
+            jInst(instructions[PC/4]>>7);
         }else if(opCode==0b1100111){
-            cout<<"jalr"<<endl;
+            // cout<<"jalr"<<endl;
             jalrInst(instructions[PC/4]>>7);
         }else if(opCode==0b0110111){
-            cout<<"lui"<<endl;
+            // cout<<"lui"<<endl;
+            luiInst(instructions[PC/4]>>7);
         }
         PC+=4;
     }
@@ -660,6 +679,133 @@ public:
         while(PC/4<instructions.size()){
             runSingleLine();
         }
+    }
+
+    void storeInst(ll inst){
+        ll imm = (inst&0b11111);
+        inst = inst>>5;
+        ll func3 = (inst&0b111);
+        inst = inst>>3;
+        ll rs1 = (inst&0b11111);
+        inst = inst>>5;
+        ll rs2 = (inst&0b11111);
+        inst = inst>>5;
+        imm += (inst<<5);
+
+        cout<<rs1<<endl;
+        cout<<rs2<<endl;
+        cout<<imm<<endl;
+
+        switch (func3){
+            case 0x0:
+                storeMem(regs[rs1]+imm,regs[rs2],1);
+                break;
+            case 0x1:
+                storeMem(regs[rs1]+imm,regs[rs2],2);
+                break;
+            case 0x2:
+                storeMem(regs[rs1]+imm,regs[rs2],4);
+                break;
+            case 0x3:
+                storeMem(regs[rs1]+imm,regs[rs2],8);
+                break;
+        }
+    }
+
+    void storeMem(ll add, ll num, ll n){
+        cout<<add<<" "<<num<<" "<<n<<endl;
+        for(int i = 0 ; i < n ; i++){
+            memBlock[add-0x10000+i] = (num&0xff);
+            cout<<"Stored at address:"<<add+i<<endl;
+            num = num>>16;
+        }
+    }
+
+    void loadInst(ll inst){
+        int rd = (inst&0b11111);
+        inst = inst>>5;
+        int func3 = (inst&0b111);
+        inst = inst>>3;
+        int rs1 = (inst&0b11111);
+        inst = inst>>5;
+        int imm = inst;
+
+        if(rd==0) return;
+
+        switch(func3){
+            case 0x0:
+                // cout<<getNum(regs[rs1]+imm,1)<<endl;
+                regs[rd] = getNum(regs[rs1]+imm,1);
+                break;
+            case 0x1:
+                // cout<<getNum(regs[rs1]+imm,2)<<endl;
+                regs[rd] = getNum(regs[rs1]+imm,2);
+                break;
+            case 0x2:
+                // cout<<getNum(regs[rs1]+imm,4)<<endl;
+                regs[rd] = getNum(regs[rs1]+imm,4);
+                break;
+            case 0x3:
+                // cout<<getNum(regs[rs1]+imm,8)<<endl;
+                regs[rd] = getNum(regs[rs1]+imm,8);
+                break;
+            case 0x4:
+                // cout<<getNum(regs[rs1]+imm,1)<<endl;
+                regs[rd] = (getNum(regs[rs1]+imm,1)&0xf);
+                break;
+            case 0x5:
+                // cout<<getNum(regs[rs1]+imm,2)<<endl;
+                regs[rd] = (getNum(regs[rs1]+imm,2)&0xff);
+                break;
+            case 0x6:
+                // cout<<getNum(regs[rs1]+imm,4)<<endl;
+                regs[rd] = (getNum(regs[rs1]+imm,4)&0xffff);
+                break;
+        }
+    }
+
+    void luiInst(ll inst){
+        int rd = (inst&0b11111);
+        inst = inst>>5;
+        
+        ll imm = inst<<12;
+
+        if(rd!=0) regs[rd] = imm;
+    }
+
+    void jInst(ll inst){
+        int rd = (inst&0b11111);
+        inst = inst >> 5;
+
+        ll imm = (inst&0xff);
+        inst = inst >> 8;
+        imm = imm << 11;
+        
+        ll imm11 = (inst&0b1);
+        inst = inst >> 1;
+        imm11 = imm11 << 10;
+        imm = imm | imm11;
+
+        ll imm10_1 = (inst&0x3ff);
+        inst = inst >> 10;
+        imm = imm | imm10_1;
+
+        ll imm20 = (inst&0b1);
+        imm = imm << 1;
+
+        if (imm20 == 0b1){
+            imm = (imm^0xfffff);
+            imm += 0b1;
+            imm = 0 - imm;
+        }
+        // storing the value of PC+4 in rd and then I'll increase PC
+        if (rd != 0b00000){
+            regs[rd] = PC + 4;
+        }
+        PC += imm;
+        PC -= 4;
+
+        cout<<"jal format imm:"<<imm<<endl;        
     }
 
     void jalrInst(ll inst){
@@ -869,6 +1015,25 @@ public:
         for (const auto& val : instructions) {
             cout <<std::hex<< val << endl;
         }
+    }
+
+    ll getNum(ll add, ll n){
+        ll res = 0, temp;
+        cout<<add<<" "<<n<<endl;
+        for(int i = 0 ; i < n ; i++){
+            temp = bitsetToNum(memBlock[add+i]);
+            res += (res<<(8*i))+temp;
+            cout<<res<<endl;
+        }
+        return res;
+    }
+
+    ll bitsetToNum(bitset<8> b){
+        ll num = 0;
+        for(int i = 0 ; i < 8 ; i++){
+            num += (1<<(i))*b[i];
+        }
+        return num;
     }
 
     void reset(){
